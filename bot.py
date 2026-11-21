@@ -1,5 +1,7 @@
 import os
 import logging
+import asyncio
+from aiohttp import web
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -18,10 +20,12 @@ logger = logging.getLogger(__name__)
 # Sozlamalar
 API_ID = os.getenv("TELEGRAM_API_ID")
 API_HASH = os.getenv("TELEGRAM_API_HASH")
-SESSION_STRING = os.getenv("TELEGRAM_SESSION", "")
+SESSION_STRING = os.getenv("TELEGRAM_SESSION", "").strip()
 
-# Agar SESSION_STRING bo'lsa (Render uchun) shundan foydalanadi,
-# bo'lmasa oddiy lokal 'muhammaddiyor_session' faylidan foydalanadi
+if not API_ID or not API_HASH:
+    logger.critical("TELEGRAM_API_ID yoki TELEGRAM_API_HASH ko'rsatilmagan!")
+
+# Render uchun StringSession yoki lokal sessiya
 if SESSION_STRING:
     session = StringSession(SESSION_STRING)
 else:
@@ -38,7 +42,7 @@ AUTO_REPLY_TEXT = (
 @client.on(events.NewMessage(incoming=True))
 async def handle_incoming_message(event):
     """
-    Sizning lichkangizga kim yozsa ham avtomatik javob beradi.
+    Shaxsiy chatlardan kelgan xabarlarga avto-javob qaytarish.
     """
     if not event.is_private:
         return
@@ -54,23 +58,43 @@ async def handle_incoming_message(event):
     if not user_text:
         return
 
-    logger.info(f"Yangi xabar keldi [{user_name}]: {user_text}")
+    logger.info(f"Yangi xabar [{user_name}]: {user_text}")
 
     try:
         async with client.action(event.chat_id, "typing"):
             await event.reply(AUTO_REPLY_TEXT)
-
         logger.info(f"Javob muvaffaqiyatli yuborildi [{user_name}]")
     except Exception as e:
         logger.error(f"Xatolik: {e}", exc_info=True)
+
+
+# Render Web Service uchun portni ochiq tutuvchi yengil server
+async def health_check(request):
+    return web.Response(text="Bot is running active 24/7!")
+
+
+async def start_web_server():
+    port = int(os.getenv("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    app.router.add_get("/health", health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"Web server Render uchun {port}-portda ishga tushdi.")
 
 
 async def main():
     logger.info("Bot ishga tushirilmoqda...")
     await client.start()
     me = await client.get_me()
-    print(f"\n✅ Dastur faol! Akkaunt: {me.first_name}")
-    print(f"=======================================================\n")
+    logger.info(f"Akkaunt ulandi: {me.first_name} (@{me.username})")
+
+    # Render Web Service portini ochish
+    await start_web_server()
+
+    # Botni doimiy rejimda ushlab turish
     await client.run_until_disconnected()
 
 
