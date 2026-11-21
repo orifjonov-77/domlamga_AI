@@ -1,25 +1,25 @@
-from telethon import TelegramClient
-from telethon.sessions import StringSession
 import os
 from dotenv import load_dotenv
+from telethon.sync import TelegramClient
+from telethon.sessions import StringSession
 
 load_dotenv()
 
-API_ID = int(os.getenv("TELEGRAM_API_ID"))
+API_ID = int(os.getenv("TELEGRAM_API_ID", 0))
 API_HASH = os.getenv("TELEGRAM_API_HASH")
 
-# Mavjud fayldan ochish
-client = TelegramClient("muhammaddiyor_session", API_ID, API_HASH)
-
-async def main():
-    await client.connect()
-    # StringSession ga aylantirish
-    string = StringSession.save(client.session)
-    print("\n" + "="*50)
-    print("RENDER UCHUN 'TELEGRAM_SESSION' QIYMATI:")
-    print("="*50)
-    print(string)
-    print("="*50 + "\n")
-
-with client:
-    client.loop.run_until_complete(main())
+# Sinxron mijoz orqali sessiyani ochish
+with TelegramClient("muhammaddiyor_session", API_ID, API_HASH) as client:
+    # Mavjud sessiyadan StringSession kalitini olish
+    session_string = StringSession.save(client.session)
+    
+    print("\n" + "="*60)
+    print("MANA SIZNING RENDER UCHUN 'TELEGRAM_SESSION' KALITINGIZ:")
+    print("="*60)
+    print(session_string)
+    print("="*60 + "\n")
+    
+    # Uni oson nusxalash uchun alohida session_string.txt fayliga ham yozib qo'yamiz
+    with open("session_string.txt", "w", encoding="utf-8") as f:
+        f.write(session_string)
+    print("✅ Kalit 'session_string.txt' fayliga ham saqlandi!\n")
