@@ -20,9 +20,8 @@ API_HASH = os.getenv("TELEGRAM_API_HASH")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION", "").strip()
 
 if not API_ID or not API_HASH:
-    logger.critical("TELEGRAM_API_ID yoki TELEGRAM_API_HASH yo'q!")
+    logger.critical("TELEGRAM_API_ID yoki TELEGRAM_API_HASH ko'rsatilmagan!")
 
-# Render uchun StringSession majburiy
 if not SESSION_STRING:
     logger.error("DIQQAT: TELEGRAM_SESSION topilmadi! Render Environment Variables bo'limiga TELEGRAM_SESSION ni qo'shing.")
     session = "muhammaddiyor_session"
@@ -52,12 +51,12 @@ async def handle_incoming_message(event):
     if not user_text:
         return
 
-    logger.info(f"Yangi xabar [{user_name}]: {user_text}")
+    logger.info(f"Yangi xabar keldi [{user_name}]: {user_text}")
 
     try:
         async with client.action(event.chat_id, "typing"):
             await event.reply(AUTO_REPLY_TEXT)
-        logger.info(f"Javob yuborildi [{user_name}]")
+        logger.info(f"Javob muvaffaqiyatli yuborildi [{user_name}]")
     except Exception as e:
         logger.error(f"Xatolik: {e}", exc_info=True)
 
@@ -79,19 +78,23 @@ async def start_web_server():
 
 
 async def main():
-    # Telegramga ulanish (hech qanday input kutmaydi)
+    logger.info("Bot ishga tushirilmoqda...")
     await client.connect()
+    
     if not await client.is_user_authorized():
         logger.critical("Sessiya avtorizatsiyadan o'tmagan! TELEGRAM_SESSION kalitini to'g'ri kiriting.")
         return
 
     me = await client.get_me()
-    logger.info(f"Muvaffaqiyatli ulandi: {me.first_name} (@{me.username})")
+    logger.info(f"Muvaffaqiyatli ulandi! Akkaunt: {me.first_name} (@{me.username})")
 
+    # Portni ochish (Render Web Service talabi)
     await start_web_server()
+
+    # Doimiy ishlash rejimida ushlab turish
     await client.run_until_disconnected()
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    # Python 3.14 uchun zamonaviy ishga tushirish
+    asyncio.run(main())
